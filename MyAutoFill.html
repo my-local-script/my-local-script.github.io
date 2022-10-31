@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>MyAutoFill</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.1/jquery.js"
+      integrity="sha512-CX7sDOp7UTAq+i1FYIlf9Uo27x4os+kGeoT7rgwvY+4dmjqV0IuE/Bl5hVsjnQPQiTOhAX1O2r2j5bjsFBvv/A=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/1.0.21/jquery.csv.js"
+      integrity="sha512-2ypsPur7qcA+2JjmmIJR1c4GWFqTLIe1naXXplraMg0aWyTOyAMpOk+QL+ULpzwrO/GdwA3qB3FhVyyiR8gdhw=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    ></script>
+  </head>
+  <body>
+    <form id="myAutoFill">
+      <input type="file" name="CSV" accept=".csv" id="csv" />
+      <br />
+      <label for="prefex">Prefix</label>
+      <input type="text" name="Prefix" id="prefex" value="DT08-" />
+      <br />
+      <label for="startNumber">Start Number</label>
+      <input type="number" name="Start Number" id="startNumber" value="1" />
+      <br />
+      <label for="separator">separator</label>
+      <input type="text" name="separator" id="separator" value="," />
+      <br />
+      <button type="submit">Submit</button>
+    </form>
+  </body>
+  <script>
+    const myAutoFill = document.querySelector("#myAutoFill");
+    const csvFile = document.getElementById("csv");
+
+    function convertCsv(csvContent, prefix, startNum, separator) {
+      const lines = $.csv.toArrays(csvContent, { separator: separator });
+      console.log("lines", startNum, separator, lines);
+      const headers = lines[0];
+      console.log("headers", headers);
+      const newCsv = [];
+      newCsv.push(headers);
+      for (const parts of lines.slice(1, lines.length)) {
+        const lastPart = parts[parts.length - 1].trim();
+        const newLastPart = prefix + ("000" + startNum).substr(-4);
+        if (lastPart !== "") {
+          startNum += 1;
+        }
+        parts[parts.length - 1] = newLastPart;
+        newCsv.push(parts);
+      }
+      return $.csv.fromArrays(newCsv);
+    }
+
+    function download(content, fileName) {
+      var blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", fileName);
+      document.body.appendChild(link); // Required for FF
+      link.click();
+    }
+
+    myAutoFill.onsubmit = function (e) {
+      e.preventDefault();
+      console.log(myAutoFill.target, e);
+      const formData = new FormData(e.target);
+      const formProps = Object.fromEntries(formData);
+      console.log(formData, formProps);
+      const reader = new FileReader();
+      reader.onload = () => {
+        console.log("csv", formProps.Prefix, reader.result.length);
+        const newCsvContent = convertCsv(
+          reader.result,
+          formProps.Prefix,
+          parseInt(formProps["Start Number"]),
+          formProps.separator
+        );
+        console.log(newCsvContent.length);
+        download(
+          newCsvContent,
+          formProps.CSV.name.split(".csv")[0] + " - new.csv"
+        );
+      };
+      reader.readAsText(csvFile.files[0], "utf8");
+    };
+  </script>
+</html>
